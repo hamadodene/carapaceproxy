@@ -110,10 +110,7 @@ public class ListenersResource {
         for (NetworkListenerConfiguration listener : conf.getListeners()) {
             int port = listener.getPort() + server.getListenersOffsetPort();
             ClientConnectionHandler handler = listeners.getListenerHandler(listener.getKey());
-            int totalRequests = handler == null
-                    ? 0
-                    : handler.getTotalRequestsCount();
-
+            int totalRequests = handler == null ? 0 : handler.getTotalRequestsCount();
             ListenerBean lisBean = new ListenerBean(
                     listener.getHost(),
                     port,
