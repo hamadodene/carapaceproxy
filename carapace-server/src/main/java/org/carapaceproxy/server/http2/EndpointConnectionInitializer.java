@@ -25,7 +25,7 @@ import io.netty.handler.codec.http2.Http2Settings;
 import io.netty.handler.ssl.SslContext;
 
 /**
- * Configures client pipeline to support HTTP/2 frames via {@link Http2FrameCodec} and {@link Http2MultiplexHandler}.
+ * Configures endpoint pipeline to support HTTP/2 frames via {@link Http2FrameCodec} and {@link Http2MultiplexHandler}.
  */
 public final class EndpointConnectionInitializer extends ChannelInitializer<Channel> {
 
