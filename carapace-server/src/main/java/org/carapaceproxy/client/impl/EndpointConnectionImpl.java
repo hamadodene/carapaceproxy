@@ -139,6 +139,7 @@ public class EndpointConnectionImpl implements EndpointConnection {
                 .channel(Epoll.isAvailable() ? EpollSocketChannel.class : NioSocketChannel.class)
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, parent.getConnectTimeout())
+                .option(ChannelOption.AUTO_CLOSE, false)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
@@ -305,6 +306,7 @@ public class EndpointConnectionImpl implements EndpointConnection {
         // chunk has been sent, because 'after' the writeAndFlush (on the listener)
         // it will be too late and the response from the server
         // may have already been received !
+        //clientSidePeerHandler.messageSentToBackend(EndpointConnectionImpl.this);
         activityDone();
         channelToEndpoint
                 .writeAndFlush(msg)

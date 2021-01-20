@@ -1,23 +1,14 @@
 package org.carapaceproxy;
 
 /*
- Licensed to Diennea S.r.l. under one
- or more contributor license agreements. See the NOTICE file
- distributed with this work for additional information
- regarding copyright ownership. Diennea S.r.l. licenses this file
- to you under the Apache License, Version 2.0 (the
- "License"); you may not use this file except in compliance
- with the License.  You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing,
- software distributed under the License is distributed on an
- "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- KIND, either express or implied.  See the License for the
- specific language governing permissions and limitations
- under the License.
-
+ * Licensed to Diennea S.r.l. under one or more contributor license agreements. See the NOTICE file distributed with this work for additional information regarding copyright ownership. Diennea S.r.l.
+ * licenses this file to you under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing permissions and limitations under the License.
+ *
  */
 import org.carapaceproxy.utils.TestEndpointMapper;
 import org.carapaceproxy.utils.TestUtils;
@@ -25,6 +16,7 @@ import org.carapaceproxy.server.HttpProxyServer;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 
@@ -42,11 +34,19 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.github.tomakehurst.wiremock.client.WireMock;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import org.carapaceproxy.client.impl.ConnectionsManagerImpl;
+import org.carapaceproxy.utils.RawHttpServer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -81,7 +81,7 @@ public class RawClientTest {
         LOG.log(Level.INFO, "End {0}", testName.getMethodName());
     }
 
-    @Test
+    //@Test
     public void testClientsExpectsConnectionClose() throws Exception {
 
         stubFor(get(urlEqualTo("/index.html"))
@@ -119,7 +119,7 @@ public class RawClientTest {
 
     }
 
-    @Test
+    //@Test
     public void testClientsExpectsConnectionCloseWithDownEndpoint() throws Exception {
 
         TestEndpointMapper mapper = new TestEndpointMapper("localhost", 1111);
@@ -157,7 +157,7 @@ public class RawClientTest {
 
     }
 
-    @Test
+    //@Test
     public void testClientsSendsRequestAndClose() throws Exception {
 
         stubFor(get(urlEqualTo("/index.html"))
@@ -206,7 +206,7 @@ public class RawClientTest {
 
     }
 
-    @Test
+    //@Test
     public void testClientsSendsRequestAndCloseOnDownBackend() throws Exception {
 
         TestEndpointMapper mapper = new TestEndpointMapper("localhost", 1111);
@@ -253,7 +253,7 @@ public class RawClientTest {
 
     }
 
-    @Test
+    //@Test
     public void clientsKeepAliveSimpleTest() throws Exception {
 
         stubFor(get(urlEqualTo("/index.html"))
@@ -329,7 +329,7 @@ public class RawClientTest {
 
     }
 
-    @Test
+    //@Test
     public void downloadSmallPayloadsTest() throws Exception {
 
         stubFor(get(urlEqualTo("/index.html"))
@@ -373,7 +373,7 @@ public class RawClientTest {
 
     }
 
-    @Test
+    //@Test
     public void endpointKeyTest() throws Exception {
         {
             EndpointKey entryPoint = EndpointKey.make("localhost:8080");
@@ -387,7 +387,7 @@ public class RawClientTest {
         }
     }
 
-    @Test
+    //@Test
     public void testManyInflightRequests() throws Exception {
 
         stubFor(get(urlEqualTo("/index.html"))
@@ -443,9 +443,9 @@ public class RawClientTest {
 
     }
 
-    @Test
+    //@Test
     public void testConnectionCloseWhenErrorOnRequest() throws Exception {
-         stubFor(get(urlEqualTo("/index.html"))
+        stubFor(get(urlEqualTo("/index.html"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "text/html")
@@ -479,7 +479,7 @@ public class RawClientTest {
             TestUtils.waitForCondition(() -> {
                 EndpointStats epstats = stats.getEndpointStats(key);
                 System.out.println("stats: " + epstats);
-                return epstats.getTotalConnections().intValue() ==  1
+                return epstats.getTotalConnections().intValue() == 1
                         && epstats.getActiveConnections().intValue() == 0
                         && epstats.getOpenConnections().intValue() == 0;
             }, 100);
@@ -487,4 +487,216 @@ public class RawClientTest {
         }
         TestUtils.waitForCondition(TestUtils.ALL_CONNECTIONS_CLOSED(stats), 100);
     }
+
+    @Test
+    public void testRequestsReadTimeoutReal() throws Exception {
+        String carapaceNodeHost = "mn-carapace.sviluppo.dna";
+        String endpoint = "qapg24ws";
+        int carapaceNodePort = 443;
+        String host = "mn-carapace.sviluppo.dna";
+        String baseUri = "/ws/rest/api/";
+        String auth =
+                "9189A4D2F408FA495665AF6CA8ED47DA56758A3E400F1FE3C35D2034A954BA400E01A15895781073F8AFF7A771EBF1572CD8EAB9853864017DAD5105687FBCC2FD1EF4C52B63C95B28808FAEC045402F4DAC5320A5DDDAF035CB6EF7A99D6C8B5FC9ECA8AA1D3E7EA72FF15517E1461E1698162CF3FC444704F34FA8EDE7DB05FCF49";
+
+        long requests = 1_000_000;
+
+        int testCase = 3;
+        long clients = 10;
+        int readTimeoutSeconds = 60;
+
+        switch (testCase) {
+            case 0: {
+                // get 1 client
+                String uri = "version";
+                try (RawHttpClient client = new RawHttpClient(carapaceNodeHost, carapaceNodePort, true)) {
+                    client.getSocket().setSoTimeout(readTimeoutSeconds * 1_000);
+                    for (int i = 0; i < requests; i++) {
+                        String res = client.executeRequest("GET " + baseUri + uri + " HTTP/1.1"
+                                + "\r\nHost: " + host
+                                + "\r\nAuthorization: Bearer " + auth
+                                + "\r\nConnection: keep-alive"
+                                + "\r\n\r\n"
+                        ).getBodyString();
+                        System.out.println("RESP: " + res);
+                    }
+                }
+                break;
+            }
+            case 1: {
+                // get multi client
+                for (int i = 0; i < clients; i++) {
+                    final int thread = i;
+                    new Thread(() -> {
+                        try (RawHttpClient client = new RawHttpClient(carapaceNodeHost, carapaceNodePort, true)) {
+                            client.getSocket().setSoTimeout(readTimeoutSeconds * 1_000);
+                            String uri = "version";
+                            while (true) {
+                                RawHttpClient.HttpResponse res = client.executeRequest("GET " + baseUri + uri + " HTTP/1.1"
+                                        + "\r\nHost: " + host
+                                        + "\r\nAuthorization: Bearer " + auth
+                                        + "\r\nConnection: keep-alive"
+                                        + "\r\n\r\n"
+                                );
+                                String resp = res.getBodyString();
+                                System.out.println("Thread " + thread + " RESP: " + resp + "; HEADERS: " + String.join("; ", res.getHeaderLines()));
+                            }
+                        } catch (Exception e) {
+                            System.out.println("EXCEPTION: " + e);
+                        }
+                    }).start();
+                }
+                TestUtils.waitForCondition(() -> false, 60 * 60 * 1);
+                break;
+            }
+            case 2: {
+                // post 1 client
+                String uri = "v19/contacts/subscribe";
+                try (RawHttpClient client = new RawHttpClient(carapaceNodeHost, carapaceNodePort, true)) {
+                    client.getSocket().setSoTimeout(readTimeoutSeconds * 1_000);
+                    for (int i = 0; i < requests; i++) {
+                        String body = "{\"values\" : {\"email\" : \"newcontact-" + i + "@localhost\"}, \"options\" : {\"iddatabase\" : 7}}";
+                        String res = client.executeRequest("POST " + baseUri + uri + " HTTP/1.1"
+                                + "\r\nHost: " + host
+                                + "\r\nAuthorization: Bearer " + auth
+                                + "\r\nConnection: keep-alive"
+                                + "\r\nContent-Type: application/json"
+                                + "\r\nContent-Length: " + body.length()
+                                + "\r\n\r\n"
+                                + body
+                        ).getBodyString();
+                        System.out.println("RESP: " + res);
+                    }
+                }
+                break;
+            }
+            case 3: {
+                // post multi client
+                for (int i = 0; i < clients; i++) {
+                    final int thread = i;
+                    new Thread(() -> {
+                        try (RawHttpClient client = new RawHttpClient(carapaceNodeHost, carapaceNodePort, true)) {
+                            client.getSocket().setSoTimeout(readTimeoutSeconds * 1_000);
+                            while (true) {
+                                String uri = "v19/contacts/subscribe";
+                                String body = "{\"values\" : {\"email\" : \"newcontact-" + thread + "@localhost\"}, \"options\" : {\"iddatabase\" : 1}}";
+                                RawHttpClient.HttpResponse res =
+                                        client.executeRequest("POST " + baseUri + uri + " HTTP/1.1"
+                                                + "\r\nHost: " + host
+                                                + "\r\nendpoint: " + endpoint
+                                                + "\r\nAuthorization: Bearer " + auth
+                                                + "\r\nConnection: keep-alive"
+                                                + "\r\nContent-Type: application/json"
+                                                + "\r\nContent-Length: " + body.length()
+                                                + "\r\n\r\n"
+                                                + body
+                                        );
+                                String resp = res.getBodyString();
+                                System.out.println("Thread " + thread + " RESP: " + resp + "; HEADERS: " + String.join("; ", res.getHeaderLines()));
+                            }
+                        } catch (Exception e) {
+                            System.out.println("Thread " + thread + " EXCEPTION: " + e);
+                        }
+                    }).start();
+                }
+                break;
+            }
+        }
+
+        TestUtils.waitForCondition(() -> false, 60 * 60 * 2); // 2h
+    }
+
+    ////@Test
+    public void testRequestsReadTimeout() throws Exception {
+        String responseJson = "{\"property\" : \"value\"}";
+        stubFor(post(urlEqualTo("/index.html"))
+                .willReturn(WireMock.okJson(responseJson)));
+
+        TestEndpointMapper mapper = new TestEndpointMapper("localhost", wireMockRule.port());
+        EndpointKey key = new EndpointKey("localhost", wireMockRule.port());
+
+        ConnectionsManagerStats stats;
+        try (HttpProxyServer server = HttpProxyServer.buildForTests("localhost", 0, mapper, tmpDir.newFolder())) {
+            ConnectionsManagerImpl conMan = (ConnectionsManagerImpl) server.getConnectionsManager();
+            conMan.getConnections().setMaxTotalPerKey(10);
+            server.start();
+            int port = server.getLocalPort();
+            assertEquals(10, conMan.getConnections().getMaxTotalPerKey());
+
+            stats = server.getConnectionsManager().getStats();
+
+            long clients = 100;
+            int maxRequests = 10;
+            int readTimeoutSeconds = 2;
+
+            Random rnd = new Random();
+            // post multi client
+            for (int i = 0; i < clients; i++) {
+                final int thread = i;
+                new Thread(() -> {
+                    while (true) {
+                        try (RawHttpClient client = new RawHttpClient("localhost", port)) {
+                            client.getSocket().setSoTimeout(readTimeoutSeconds * 1_000);
+                            for (int j = 0; j < rnd.nextInt(maxRequests + 1); j++) {
+                                String body = "{\"values\" : {\"p\" : \"v\"}, \"options\" : {\"o\" : 1}}";
+                                RawHttpClient.HttpResponse res =
+                                        client.executeRequest("POST /index.html HTTP/1.1"
+                                                + "\r\nHost: localhost"
+                                                + "\r\nConnection: keep-alive"
+                                                + "\r\nContent-Type: application/json"
+                                                + "\r\nContent-Length: " + body.length()
+                                                + "\r\n\r\n"
+                                                + body
+                                        );
+                                String resp = res.getBodyString();
+                                System.out.println("Thread " + thread + " time=" + System.currentTimeMillis() + " RESP: " + resp + "; HEADERS: " + String.join("; ", res.getHeaderLines()));
+                            }
+                        } catch (Exception e) {
+                            System.out.println("Thread " + thread + " time=" + System.currentTimeMillis() + " EXCEPTION: " + e);
+                            System.out.println("EXCEPTION NUM IDLE: " + conMan.getConnections().getNumIdle());
+                            System.out.println("EXCEPTION NUM ACTIVE: " + conMan.getConnections().getNumActive());
+                            System.out.println("EXCEPTION NUM WAITERS: " + conMan.getConnections().getNumWaiters());
+                            fail();
+                        }
+                    }
+                }).start();
+            }
+
+            TestUtils.waitForCondition(() -> false, 60 * 60 * 2); // 2h
+        }
+    }
+
+    //@Test
+    public void testKeepAliveTimeout() throws Exception {
+        RawHttpServer httpServer = new RawHttpServer(new HttpServlet() {
+            public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+                response.setContentType("text/html");
+                PrintWriter out = response.getWriter();
+                out.println("it <b>works</b> !!");
+            }
+        });
+        httpServer.setIdleTimeout(5);
+        int httpServerPort = httpServer.start();
+
+        TestEndpointMapper mapper = new TestEndpointMapper("localhost", httpServerPort);
+        EndpointKey key = new EndpointKey("localhost", httpServerPort);
+
+        ConnectionsManagerStats stats;
+        try (HttpProxyServer server = HttpProxyServer.buildForTests("localhost", 0, mapper, tmpDir.newFolder());) {
+            server.start();
+            int port = server.getLocalPort();
+            assertTrue(port > 0);
+
+            try (RawHttpClient client = new RawHttpClient("localhost", port)) {
+                for (int j = 0; j < 2; j++) {
+                    RawHttpClient.HttpResponse res = client.get("/index.html");
+                    String resp = res.getBodyString();
+                    System.out.println("RESP: " + resp + "; HEADERS: " + String.join("; ", res.getHeaderLines()));
+                    Thread.sleep(10_000);
+                }
+            } catch (Exception e) {
+                System.out.println("EXCEPTION: " + e);
+            }
+        }
+    }
+
 }
