@@ -139,7 +139,6 @@ public class EndpointConnectionImpl implements EndpointConnection {
                 .channel(Epoll.isAvailable() ? EpollSocketChannel.class : NioSocketChannel.class)
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, parent.getConnectTimeout())
-                .option(ChannelOption.AUTO_CLOSE, false)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
@@ -421,6 +420,14 @@ public class EndpointConnectionImpl implements EndpointConnection {
     }
 
     private class ReadEndpointResponseHandler extends SimpleChannelInboundHandler<HttpObject> {
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            if (acceptInboundMessage(msg)) {
+            } else {
+            }
+            super.channelRead(ctx, msg);
+        }
 
         @Override
         public void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {

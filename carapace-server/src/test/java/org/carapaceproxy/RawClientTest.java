@@ -35,6 +35,18 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
@@ -81,7 +93,7 @@ public class RawClientTest {
         LOG.log(Level.INFO, "End {0}", testName.getMethodName());
     }
 
-    //@Test
+    @Test
     public void testClientsExpectsConnectionClose() throws Exception {
 
         stubFor(get(urlEqualTo("/index.html"))
@@ -119,7 +131,7 @@ public class RawClientTest {
 
     }
 
-    //@Test
+    @Test
     public void testClientsExpectsConnectionCloseWithDownEndpoint() throws Exception {
 
         TestEndpointMapper mapper = new TestEndpointMapper("localhost", 1111);
@@ -157,7 +169,7 @@ public class RawClientTest {
 
     }
 
-    //@Test
+    @Test
     public void testClientsSendsRequestAndClose() throws Exception {
 
         stubFor(get(urlEqualTo("/index.html"))
@@ -206,7 +218,7 @@ public class RawClientTest {
 
     }
 
-    //@Test
+    @Test
     public void testClientsSendsRequestAndCloseOnDownBackend() throws Exception {
 
         TestEndpointMapper mapper = new TestEndpointMapper("localhost", 1111);
@@ -253,7 +265,7 @@ public class RawClientTest {
 
     }
 
-    //@Test
+    @Test
     public void clientsKeepAliveSimpleTest() throws Exception {
 
         stubFor(get(urlEqualTo("/index.html"))
@@ -329,7 +341,7 @@ public class RawClientTest {
 
     }
 
-    //@Test
+    @Test
     public void downloadSmallPayloadsTest() throws Exception {
 
         stubFor(get(urlEqualTo("/index.html"))
@@ -373,7 +385,7 @@ public class RawClientTest {
 
     }
 
-    //@Test
+    @Test
     public void endpointKeyTest() throws Exception {
         {
             EndpointKey entryPoint = EndpointKey.make("localhost:8080");
@@ -387,7 +399,7 @@ public class RawClientTest {
         }
     }
 
-    //@Test
+    @Test
     public void testManyInflightRequests() throws Exception {
 
         stubFor(get(urlEqualTo("/index.html"))
@@ -443,7 +455,7 @@ public class RawClientTest {
 
     }
 
-    //@Test
+    @Test
     public void testConnectionCloseWhenErrorOnRequest() throws Exception {
         stubFor(get(urlEqualTo("/index.html"))
                 .willReturn(aResponse()
@@ -501,8 +513,8 @@ public class RawClientTest {
         long requests = 1_000_000;
 
         int testCase = 3;
-        long clients = 10;
-        int readTimeoutSeconds = 60;
+        long clients = 100;
+        int readTimeoutSeconds = 30;
 
         switch (testCase) {
             case 0: {
@@ -594,7 +606,7 @@ public class RawClientTest {
                                 System.out.println("Thread " + thread + " RESP: " + resp + "; HEADERS: " + String.join("; ", res.getHeaderLines()));
                             }
                         } catch (Exception e) {
-                            System.out.println("Thread " + thread + " EXCEPTION: " + e);
+                            System.out.println("Thread " + thread + " time=" + System.currentTimeMillis() + " EXCEPTION: " + e);
                         }
                     }).start();
                 }
@@ -605,7 +617,7 @@ public class RawClientTest {
         TestUtils.waitForCondition(() -> false, 60 * 60 * 2); // 2h
     }
 
-    ////@Test
+    @Test
     public void testRequestsReadTimeout() throws Exception {
         String responseJson = "{\"property\" : \"value\"}";
         stubFor(post(urlEqualTo("/index.html"))
@@ -626,7 +638,7 @@ public class RawClientTest {
 
             long clients = 100;
             int maxRequests = 10;
-            int readTimeoutSeconds = 2;
+            int readTimeoutSeconds = 30;
 
             Random rnd = new Random();
             // post multi client
@@ -665,7 +677,7 @@ public class RawClientTest {
         }
     }
 
-    //@Test
+    @Test
     public void testKeepAliveTimeout() throws Exception {
         RawHttpServer httpServer = new RawHttpServer(new HttpServlet() {
             public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -696,6 +708,104 @@ public class RawClientTest {
             } catch (Exception e) {
                 System.out.println("EXCEPTION: " + e);
             }
+        }
+    }
+
+    @Test
+    public void testEmptyDataFromServer() throws Exception {
+
+        RawHttpServer httpServer = new RawHttpServer(new HttpServlet() {
+            public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+//                try {
+//                    Thread.sleep(70_000);
+////                response.setContentType("text/html");
+////                PrintWriter out = response.getWriter();
+////                out.println("it <b>works</b> !!");
+//                } catch (InterruptedException ex) {
+//                    Logger.getLogger(RawClientTest.class.getName()).log(Level.SEVERE, null, ex);
+//                }
+            }
+        });
+        //httpServer.setIdleTimeout(5);
+        int httpServerPort = httpServer.start();
+
+        TestEndpointMapper mapper = new TestEndpointMapper("localhost", httpServerPort);
+        EndpointKey key = new EndpointKey("localhost", httpServerPort);
+
+        ConnectionsManagerStats stats;
+        try (HttpProxyServer server = HttpProxyServer.buildForTests("localhost", 0, mapper, tmpDir.newFolder());) {
+            server.start();
+            int port = server.getLocalPort();
+            assertTrue(port > 0);
+
+            try (RawHttpClient client = new RawHttpClient("localhost", port)) {
+                for (int j = 0; j < 2; j++) {
+                    RawHttpClient.HttpResponse res = client.get("/index.html");
+                    String resp = res.getBodyString();
+                    System.out.println("RESP: " + resp + "; HEADERS: " + String.join("; ", res.getHeaderLines()));
+                }
+            } catch (Exception e) {
+                System.out.println("EXCEPTION: " + e);
+            }
+        }
+    }
+
+    private static class NoDataDummyServer extends ChannelInboundHandlerAdapter {
+
+        public NoDataDummyServer(String host, int port) throws InterruptedException {
+            EventLoopGroup workerGroup = new NioEventLoopGroup();
+            try {
+                Bootstrap b = new Bootstrap();
+                b.group(workerGroup);
+                b.channel(NioSocketChannel.class);
+                b.option(ChannelOption.SO_KEEPALIVE, true);
+                b.handler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    public void initChannel(SocketChannel ch) throws Exception {
+                        ch.pipeline().addLast(this);
+                    }
+                });
+
+                // Start the client.
+                ChannelFuture f = b.connect(host, port).sync();
+
+                // Wait until the connection is closed.
+                f.channel().closeFuture().sync();
+            } finally {
+                workerGroup.shutdownGracefully();
+            }
+        }
+
+        @Override
+        public void channelActive(final ChannelHandlerContext ctx) {
+            final ByteBuf time = ctx.alloc().buffer(4);
+            time.writeInt((int) (System.currentTimeMillis() / 1000L + 2208988800L));
+            System.out.println("channelActive send: " + time);
+
+            final ChannelFuture f = ctx.writeAndFlush(time);
+            f.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) {
+                    ctx.close();
+                }
+            });
+        }
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) {
+            ByteBuf m = (ByteBuf) msg;
+            try {
+                System.out.println("channelRead: " + msg);
+                ctx.close();
+            } finally {
+                m.release();
+            }
+        }
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+            cause.printStackTrace();
+            ctx.close();
         }
     }
 
