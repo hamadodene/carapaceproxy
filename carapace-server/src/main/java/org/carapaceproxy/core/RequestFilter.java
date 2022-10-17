@@ -19,6 +19,8 @@
  */
 package org.carapaceproxy.core;
 
+import java.util.Set;
+
 /**
  * Modify a request, for instance a filter can add/drop headers.
  */
@@ -30,4 +32,6 @@ public interface RequestFilter {
      * @param request
      */
     void apply(ProxyRequest request);
+
+    void apply(ProxyRequest request, Set<String> trustedXForwardedForIps);
 }

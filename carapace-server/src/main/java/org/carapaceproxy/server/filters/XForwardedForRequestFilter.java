@@ -19,9 +19,12 @@
  */
 package org.carapaceproxy.server.filters;
 
-import java.net.InetSocketAddress;
+import org.apache.commons.net.util.SubnetUtils;
 import org.carapaceproxy.core.ProxyRequest;
 import org.carapaceproxy.server.mapper.requestmatcher.RequestMatcher;
+
+import java.net.InetSocketAddress;
+import java.util.Set;
 
 /**
  * Add a X-Forwarded-For Header
@@ -36,8 +39,22 @@ public class XForwardedForRequestFilter extends BasicRequestFilter {
 
     @Override
     public void apply(ProxyRequest request) {
+    }
+
+    @Override
+    public void apply(ProxyRequest request, Set<String> trustedXForwardedForIps) {
         if (!checkRequestMatching(request)) {
             return;
+        }
+        String requestIps = request.getRequest().requestHeaders().get("X-Forwarded-For");
+
+        if (!trustedXForwardedForIps.isEmpty() && requestIps != null) {
+            trustedXForwardedForIps.forEach(subnet -> {
+                SubnetUtils utils = new SubnetUtils(subnet);
+                if (utils.getInfo().isInRange(requestIps)) {
+                    return;
+                }
+            });
         }
         request.getRequestHeaders().remove("X-Forwarded-For");
         InetSocketAddress address = request.getRemoteAddress();

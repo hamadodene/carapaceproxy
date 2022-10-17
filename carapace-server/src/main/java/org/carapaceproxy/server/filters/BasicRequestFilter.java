@@ -23,6 +23,8 @@ import org.carapaceproxy.core.ProxyRequest;
 import org.carapaceproxy.core.RequestFilter;
 import org.carapaceproxy.server.mapper.requestmatcher.RequestMatcher;
 
+import java.util.Set;
+
 /**
  *
  * Root class for all RequestFilters

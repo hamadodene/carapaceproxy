@@ -3,6 +3,8 @@ package org.carapaceproxy.server.filters;
 import org.carapaceproxy.core.ProxyRequest;
 import org.carapaceproxy.server.mapper.requestmatcher.RequestMatcher;
 
+import java.util.Set;
+
 public class XTlsCipherRequestFilter extends BasicRequestFilter {
     public static final String TYPE = "add-x-tls-cipher";
 
@@ -19,5 +21,9 @@ public class XTlsCipherRequestFilter extends BasicRequestFilter {
             request.getRequestHeaders().remove("X-Tls-Cipher");
             request.getRequestHeaders().add("X-Tls-Cipher", request.getCipherSuite());
         }
+    }
+
+    @Override
+    public void apply(ProxyRequest request, Set<String> trustedXForwardedForIps) {
     }
 }

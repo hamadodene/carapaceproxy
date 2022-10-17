@@ -36,6 +36,7 @@ import org.carapaceproxy.client.EndpointKey;
 import org.carapaceproxy.server.cache.ContentsCache;
 import org.carapaceproxy.server.config.BackendConfiguration;
 import org.carapaceproxy.server.config.ConnectionPoolConfiguration;
+import org.carapaceproxy.server.filters.XForwardedForRequestFilter;
 import org.carapaceproxy.server.mapper.CustomHeader;
 import org.carapaceproxy.server.mapper.MapResult;
 import org.carapaceproxy.utils.CarapaceLogger;
@@ -110,8 +111,15 @@ public class ProxyRequestsManager {
     public Publisher<Void> processRequest(ProxyRequest request) {
         request.setStartTs(System.currentTimeMillis());
         request.setLastActivity(request.getStartTs());
+        Set<String> trustedXForwardedForIps = parent.getCurrentConfiguration().getTrustedXForwardedForIps();
 
-        parent.getFilters().forEach(filter -> filter.apply(request));
+        parent.getFilters().forEach(filter -> {
+            if (filter instanceof XForwardedForRequestFilter) {
+                filter.apply(request, trustedXForwardedForIps);
+            } else {
+                filter.apply(request);
+            }
+        });
 
         MapResult action = parent.getMapper().map(request);
         if (action == null) {

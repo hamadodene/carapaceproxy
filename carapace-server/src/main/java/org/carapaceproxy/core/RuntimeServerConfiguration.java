@@ -21,10 +21,7 @@ package org.carapaceproxy.core;
 
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,12 +34,11 @@ import org.carapaceproxy.server.config.SSLCertificateConfiguration;
 import org.carapaceproxy.server.config.SSLCertificateConfiguration.CertificateMode;
 import static org.carapaceproxy.server.filters.RequestFilterFactory.buildRequestFilter;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import javax.net.ssl.SSLContext;
 import org.carapaceproxy.server.mapper.StandardEndpointMapper;
 import static org.carapaceproxy.server.certificates.DynamicCertificatesManager.DEFAULT_DAYS_BEFORE_RENEWAL;
 import static org.carapaceproxy.server.config.NetworkListenerConfiguration.DEFAULT_SSL_PROTOCOLS;
-import java.util.Set;
+
 import lombok.Data;
 import org.carapaceproxy.server.config.ConnectionPoolConfiguration;
 import org.carapaceproxy.utils.CarapaceLogger;
@@ -105,6 +101,7 @@ public class RuntimeServerConfiguration {
     private int maxHeaderSize = 8_192; //bytes; default 8kb
     private boolean maintenanceModeEnabled = false;
     private boolean http10BackwardCompatibilityEnabled = false;
+    private Set<String> trustedXForwardedForIps = Collections.emptySet();
 
     public RuntimeServerConfiguration() {
         defaultConnectionPool = new ConnectionPoolConfiguration(
@@ -238,6 +235,9 @@ public class RuntimeServerConfiguration {
 
         http10BackwardCompatibilityEnabled = properties.getBoolean("carapace.http10backwardcompatibility.enabled", http10BackwardCompatibilityEnabled);
         LOG.log(Level.INFO, "carapace.http10backwardcompatibility.enabled={0}", http10BackwardCompatibilityEnabled);
+
+        trustedXForwardedForIps = Set.of(properties.getArray("request.trusted.xforwardedfor.ipaddresses", new String[]{}));
+        LOG.log(Level.INFO, "request.trusted.xforwardedfor.ipaddresses={0}", trustedXForwardedForIps);
     }
 
     private void configureCertificates(ConfigurationStore properties) throws ConfigurationNotValidException {

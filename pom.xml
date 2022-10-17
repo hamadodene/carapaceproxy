@@ -137,6 +137,7 @@
         <libs.guava>31.0.1-jre</libs.guava>
         <libs.lombok>1.18.22</libs.lombok>
         <libs.spotbugsannotations>4.5.3</libs.spotbugsannotations>
+        <libs.commons-net>3.8.0</libs.commons-net>
 
         <!-- test dependecies -->
         <libs.junit>4.13.2</libs.junit>

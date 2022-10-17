@@ -19,6 +19,7 @@
  */
 package org.carapaceproxy.server.filters;
 
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.carapaceproxy.core.ProxyRequest;
@@ -69,5 +70,9 @@ public class RegexpMapSessionIdFilter extends BasicRequestFilter {
         }
         String group = _matcher.group(1);
         request.setSessionId(group);
+    }
+
+    @Override
+    public void apply(ProxyRequest request, Set<String> trustedXForwardedForIps) {
     }
 }
